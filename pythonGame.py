@@ -11,7 +11,7 @@ rectData = [100, 100, pygame.K_UP, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT]
 
 trail = []
 backgroundColor = (0, 0, 0)
-board = np.zeros((35, 35), dtype=int)
+board = np.zeros((36, 36), dtype=int)
 appleAvailable = False
 appleLoc = np.zeros(2, dtype=int)
 gameOver = False
@@ -19,8 +19,8 @@ gameOver = False
 
 def displayApple():
     while True:
-        rand1 = random.randint(0, 34)
-        rand2 = random.randint(0, 34)
+        rand1 = random.randint(1, 34)
+        rand2 = random.randint(1, 34)
 
         # check BOTH board and trail (extra safety)
         if board[rand1, rand2] == 0 and (rand1*20, rand2*20) not in trail:
@@ -82,7 +82,7 @@ def catchCollision(appleAvailable, gameOver):
     heady = rectData[1] // 20
 
     # OUT OF BOUNDS check (robust)
-    if headx < 0 or headx >= 35 or heady < 0 or heady >= 35:
+    if headx < 0 or headx >= 36 or heady < 0 or heady >= 36:
         gameOver = True
         return appleAvailable, gameOver, False
     
