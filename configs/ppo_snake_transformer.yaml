@@ -1,0 +1,43 @@
+## Minimal runnable config for trainer_ppo.py (transformer critic + SnakeEnv)
+exp_name: "ppo_snake_transformer"
+seed: 0
+
+## Environment
+env_name: "snake"
+snake_obs_mode: "flat"          # MUST be flat for CriticTransformer in trainer_ppo.py
+render: false
+
+## SnakeEnv optional params (safe defaults)
+snake_fps: 10
+snake_max_steps: 1000
+snake_reward_apple: 1.0
+snake_reward_death: -1.0
+snake_step_penalty: 0.0
+snake_walls_channel: true
+
+## PPO hyperparams
+gamma: 0.99
+lam: 0.95
+T: 2048
+max_episodes: 200
+goal_mean_100_reward: 50.0
+
+pi_lr: 3.0e-4
+vf_lr: 1.0e-3
+entropy_weight: 0.01
+entropy_decay: 0.9995
+entropy_min: 0.002
+
+policy_epochs: 5
+value_epochs: 5
+minibatch_size: 256
+
+## Networks
+actor_hidden_size: 128
+
+## Critic: anything other than "mlp" will use CriticTransformer branch
+critic_type: "transformer"
+embedding_dim: 64
+nhead: 2
+num_layers: 2
+dim_feedforward: 128
