@@ -4,6 +4,8 @@ import torch.nn.functional as F
 import math
 from torch.distributions import Categorical
 
+from utils.utils import ensure_batch_agent, flatten_BN
+
 
 
 class ActorContinuous(nn.Module):

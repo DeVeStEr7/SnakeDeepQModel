@@ -13,15 +13,62 @@ import time
 import functools
 print = functools.partial(print, flush=True)
 
+# region agent log
+import json, time as _time, os as _os, sys as _sys
+_DEBUG_LOG_PATH = "/data/ChristianShelton/xpan041/.cursor/debug-6b1b75.log"
+def _dbg(hypothesisId: str, location: str, message: str, data: dict):
+    try:
+        _os.makedirs(_os.path.dirname(_DEBUG_LOG_PATH), exist_ok=True)
+        payload = {
+            "sessionId": "6b1b75",
+            "runId": "pre-fix",
+            "hypothesisId": hypothesisId,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": int(_time.time() * 1000),
+        }
+        with open(_DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except Exception as e:
+        try:
+            _sys.stderr.write(f"[debug-log-failed] {location} {type(e).__name__}: {e}\n")
+        except Exception:
+            pass
+# endregion
 
 from algorithms.ppo import PPOAgent
 from models import ActorDiscrete,CriticTransformer,CriticMLP,CriticV
-from envs import make_env
+from envs.make_env import make_env
 from utils.utils import infer_obs_and_action
+
+ # region agent log
+_dbg("H1", "trainer_ppo.py:after_imports", "Imported make_env symbol", {
+    "make_env_type": str(type(make_env)),
+    "make_env_callable": bool(callable(make_env)),
+    "make_env_repr": repr(make_env),
+    "make_env_module_attr": getattr(make_env, "__module__", None),
+    "make_env_file_attr": getattr(make_env, "__file__", None),
+    "sys_path_0": _sys.path[0] if len(_sys.path) > 0 else None,
+})
+print("[dbg] after_imports make_env:", type(make_env), "callable=", callable(make_env), "repr=", repr(make_env))
+ # endregion
 
 
 class PPOTrainer:
     def __init__(self, config, device):
+        # region agent log
+        _dbg("H1", "trainer_ppo.py:PPOTrainer.__init__", "About to call make_env(config)", {
+            "env_name": config.get("env_name"),
+            "make_env_type": str(type(make_env)),
+            "make_env_callable": bool(callable(make_env)),
+            "make_env_repr": repr(make_env),
+            "envs_in_sys_modules": "envs" in _sys.modules,
+            "envs_module": repr(_sys.modules.get("envs")),
+            "envs_file": getattr(_sys.modules.get("envs"), "__file__", None),
+        })
+        print("[dbg] before make_env:", type(make_env), "callable=", callable(make_env), "envs_mod=", _sys.modules.get("envs"), "envs_file=", getattr(_sys.modules.get("envs"), "__file__", None))
+        # endregion
         self.env = make_env(config)
         self.device = device
 

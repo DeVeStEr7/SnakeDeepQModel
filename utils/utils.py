@@ -1,3 +1,6 @@
+import torch
+import numpy as np
+
 def ensure_batch_agent(obs: torch.Tensor) -> torch.Tensor:
     """
     Make obs shape always (B, N, ...)
@@ -58,10 +61,15 @@ def infer_obs_and_action(env):
         # Gym-style
         aspace = getattr(getattr(env, "env", env), "action_space", None)
         if aspace is None:
-            raise RuntimeError("Cannot infer action_space from env.")
-        if hasattr(aspace, "spaces"):
-            act_dim = aspace.spaces[0].n
-        else:
-            act_dim = aspace.n
+            # Fallback for SnakeEnv-like envs (4-direction discrete actions)
+            if env.__class__.__name__ == "SnakeEnv":
+                act_dim = 4
+            else:
+                raise RuntimeError("Cannot infer action_space from env.")
+        if aspace is not None:
+            if hasattr(aspace, "spaces"):
+                act_dim = aspace.spaces[0].n
+            else:
+                act_dim = aspace.n
 
     return obs_shape, n_agents, act_dim

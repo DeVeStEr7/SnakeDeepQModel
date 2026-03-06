@@ -347,3 +347,9 @@ class MAPPOAgent():
             pickle.dump(save_data, f)
         
         return np.array(results, dtype=np.float32)
+
+
+# Backwards-compatible alias used by trainer_ppo.py
+PPOAgent = MAPPOAgent
+
+__all__ = ["MAPPOAgent", "PPOAgent"]
