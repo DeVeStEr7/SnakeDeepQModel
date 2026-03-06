@@ -9,17 +9,17 @@ render: false
 
 ## SnakeEnv optional params (safe defaults)
 snake_fps: 10
-snake_max_steps: 1000
-snake_reward_apple: 1.0
-snake_reward_death: -1.0
-snake_step_penalty: 0.0
+snake_max_steps: 300
+snake_reward_apple: 5.0
+snake_reward_death: -2.0
+snake_step_penalty: -0.005
 snake_walls_channel: true
 
 ## PPO hyperparams
 gamma: 0.99
 lam: 0.95
 T: 2048
-max_episodes: 200
+max_episodes: 3000
 goal_mean_100_reward: 50.0
 
 pi_lr: 3.0e-4

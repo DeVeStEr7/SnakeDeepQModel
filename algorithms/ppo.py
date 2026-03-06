@@ -46,10 +46,13 @@ class MAPPOAgent():
     @torch.no_grad()
     def evaluate(self, env, n_rollouts=10):
         reward_list = []
+        score_list = []
+        steps_list = []
         for _ in range(n_rollouts):
             obs, _ = env.reset()
             done = False
             reward_sum = 0.0
+            last_info = {}
             while not done:
                 obs_tensor = torch.from_numpy(obs).float().to(self.device)
 
@@ -57,10 +60,18 @@ class MAPPOAgent():
                 logits = self.policy(obs_tensor)
                 actions = torch.argmax(logits, dim=-1)  # (N,)
 
-                obs, rews, done, _ = env.step(actions.cpu().numpy())
+                obs, rews, done, info = env.step(actions.cpu().numpy())
+                last_info = info if isinstance(info, dict) else {}
                 reward_sum += float(np.sum(rews))
             reward_list.append(reward_sum)
-        return float(np.mean(reward_list)), float(np.std(reward_list))
+            score_list.append(float(last_info.get("score", 0.0)))
+            steps_list.append(float(last_info.get("steps", 0.0)))
+
+        return (
+            float(np.mean(reward_list)), float(np.std(reward_list)),
+            float(np.mean(score_list)), float(np.std(score_list)),
+            float(np.mean(steps_list)), float(np.std(steps_list)),
+        )
 
 
     def compute_gae(self,rewards, values, dones, last_v=None):
@@ -280,7 +291,7 @@ class MAPPOAgent():
             batches_done += 1
             #print("end learing",time.time())
             
-            eval_mean, eval_std = self.evaluate(env, n_rollouts=10)
+            eval_mean, eval_std, eval_score_mean, eval_score_std, eval_len_mean, eval_len_std = self.evaluate(env, n_rollouts=10)
             #print("end evaluating:",time.time())
             eval_scores.append(eval_mean)
 
@@ -291,6 +302,8 @@ class MAPPOAgent():
             print(f"[Episode {episode}] [steps {total_steps}]  "
                     f"train100={mean100_train:.5f}  "
                     f"eval_mean={eval_mean:.5f} (std={eval_std:.5f})  "
+                    f"eval_score={eval_score_mean:.2f} (std={eval_score_std:.2f})  "
+                    f"eval_len={eval_len_mean:.1f} (std={eval_len_std:.1f})  "
                     f"eval100={mean100_eval:.5f}  "
                     f"entropy={self.entropy_weight:.5f}")
             
