@@ -44,7 +44,7 @@ class MAPPOAgent():
         os.makedirs(self.out_dir, exist_ok=True)
 
     @torch.no_grad()
-    def evaluate(self, env, n_rollouts=10):
+    def evaluate(self, env, n_rollouts=10, deterministic: bool = True):
         reward_list = []
         score_list = []
         steps_list = []
@@ -58,7 +58,11 @@ class MAPPOAgent():
 
                 # obs_tensor: (N, obs_dim) or (N, C, H, W)
                 logits = self.policy(obs_tensor)
-                actions = torch.argmax(logits, dim=-1)  # (N,)
+                if deterministic:
+                    actions = torch.argmax(logits, dim=-1)  # (N,)
+                else:
+                    dist = Categorical(logits=logits)
+                    actions = dist.sample()  # (N,)
 
                 obs, rews, done, info = env.step(actions.cpu().numpy())
                 last_info = info if isinstance(info, dict) else {}
@@ -257,6 +261,11 @@ class MAPPOAgent():
         torch.manual_seed(seed)
         np.random.seed(seed)
         random.seed(seed)
+        if hasattr(env, "seed"):
+            try:
+                env.seed(seed)
+            except Exception:
+                pass
         best_eval = -float("inf")
         best_std = -float("inf")
         best_mean_eval = float("inf")
@@ -291,7 +300,9 @@ class MAPPOAgent():
             batches_done += 1
             #print("end learing",time.time())
             
-            eval_mean, eval_std, eval_score_mean, eval_score_std, eval_len_mean, eval_len_std = self.evaluate(env, n_rollouts=10)
+            eval_mean, eval_std, eval_score_mean, eval_score_std, eval_len_mean, eval_len_std = self.evaluate(
+                env, n_rollouts=10, deterministic=True
+            )
             #print("end evaluating:",time.time())
             eval_scores.append(eval_mean)
 
