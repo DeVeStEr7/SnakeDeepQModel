@@ -41,6 +41,9 @@ class SnakeConfig:
     allow_reverse: bool = False  # typical snake disallows 180-degree reverse
     obs_mode: str = "flat"       # "flat" or "grid"
     include_walls_channel: bool = True
+    # Dense shaping reward: encourage moving closer to apple.
+    # Added reward each step: distance_reward_scale * (dist_before - dist_after)
+    distance_reward_scale: float = 0.0
 
 
 class SnakeEnv:
@@ -64,7 +67,8 @@ class SnakeEnv:
         self.W = self.cfg.grid_size
 
         # state
-        self.rng = np.random.default_rng(0)
+        # Use non-fixed RNG by default; training code can call env.seed(seed) for reproducibility.
+        self.rng = np.random.default_rng()
         self.snake = []            # list[(x,y)] head first, in GRID coords
         self.direction = 3          # default RIGHT
         self.apple = None           # (x,y) or None
@@ -132,6 +136,15 @@ class SnakeEnv:
         hx, hy = self.snake[0]
         nx, ny = self._next_pos(hx, hy, self.direction)
 
+        # shaping: distance to (current) apple (Manhattan)
+        # Important: keep the same target apple for dist_before/dist_after in this step.
+        dist_before = None
+        target_apple = None
+        if self.cfg.distance_reward_scale != 0.0 and self.apple is not None:
+            target_apple = self.apple  # (ax, ay)
+            ax, ay = target_apple
+            dist_before = abs(hx - ax) + abs(hy - ay)
+
         # collision checks
         # walls: treat boundary cells (0 or H-1, 0 or W-1) as walls
         if self._is_wall(nx, ny):
@@ -161,6 +174,16 @@ class SnakeEnv:
             self.apple = self._spawn_apple()
         else:
             self.snake.pop()  # remove tail
+
+        # shaping reward after move (only if not already terminal)
+        if dist_before is not None and target_apple is not None:
+            ax, ay = target_apple
+            # if we moved onto the apple, distance becomes 0 (even though apple may respawn)
+            if will_grow:
+                dist_after = 0
+            else:
+                dist_after = abs(nx - ax) + abs(ny - ay)
+            reward += float(self.cfg.distance_reward_scale) * float(dist_before - dist_after)
 
         # episode length cap
         if self.steps >= self.cfg.max_steps:

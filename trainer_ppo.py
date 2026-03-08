@@ -11,6 +11,7 @@ import pickle
 import yaml
 import time
 import functools
+import sys
 print = functools.partial(print, flush=True)
 
 from algorithms.ppo import PPOAgent
@@ -26,6 +27,8 @@ class PPOTrainer:
 
         obs_shape, n_agents, act_dim = infer_obs_and_action(self.env)
         self.act_dim = act_dim
+        self.n_agents = n_agents
+        self.obs_shape = obs_shape
 
         timestamp = time.strftime("%m%d_%H%M%S")
         run_name = f"{config['exp_name']}_{timestamp}_seed{config['seed']}"
@@ -47,6 +50,7 @@ class PPOTrainer:
                 device=self.device
             ).to(device)
         else:
+            C = obs_shape[0]
             # grid input: require ActorDiscrete that supports CNN branch
             # If your ActorDiscrete is still MLP-only, this will fail early (good).
             # For the auto MLP/CNN ActorDiscrete I gave earlier, it works.
@@ -55,11 +59,14 @@ class PPOTrainer:
                 obs_dim=obs_dim_placeholder,
                 a_size=act_dim,
                 hidden_size=config['actor_hidden_size'],
+                cnn_channels=int(config.get("actor_cnn_channels", C)),
+                cnn_feat=int(config.get("actor_cnn_feat", 256)),
                 device=self.device
             ).to(device)
 
         # ---- build critic ----
-        if config['critic_type'] == "mlp":
+        critic_type = str(config['critic_type']).lower()
+        if critic_type == "mlp":
             if len(obs_shape) != 1:
                 raise ValueError(
                     "critic_type=mlp currently assumes flat obs (N,D). "
@@ -73,7 +80,7 @@ class PPOTrainer:
                 fc2_units=config['fc2_units'],
                 device=self.device
             ).to(device)
-        else:
+        elif critic_type == "transformer":
             if len(obs_shape) != 1:
                 raise ValueError(
                     "CriticTransformer expects flat per-agent vectors (B,N,D). "
@@ -88,6 +95,26 @@ class PPOTrainer:
                 dim_feedforward=config['dim_feedforward'],
                 device=self.device
             ).to(device)
+        elif critic_type in ("v", "criticv", "cnn"):
+            # CriticV supports both flat and grid obs; for grid it uses a CNN encoder.
+            if len(obs_shape) == 1:
+                obs_dim = obs_shape[0]
+                cnn_channels = int(config.get("critic_cnn_channels", 4))
+            else:
+                C = obs_shape[0]
+                obs_dim = int(config.get("critic_obs_dim_placeholder", 1))
+                cnn_channels = int(config.get("critic_cnn_channels", C))
+
+            self.critic = CriticV(
+                obs_dim=obs_dim,
+                n_agents=n_agents,
+                hidden=int(config.get("critic_hidden", 128)),
+                cnn_channels=cnn_channels,
+                cnn_feat=int(config.get("critic_cnn_feat", 256)),
+                device=self.device,
+            ).to(device)
+        else:
+            raise ValueError(f"Unknown critic_type: {config['critic_type']!r}")
 
         self.agent = PPOAgent(
             self.actor,
@@ -121,8 +148,16 @@ class PPOTrainer:
 
 
 if __name__ == "__main__":
-    with open("configs/ppo_snake_transformer.yaml", "r") as f:
+    cfg_path = sys.argv[1] if len(sys.argv) > 1 else "configs/ppo_snake_transformer-2.yaml"
+    with open(cfg_path, "r") as f:
         config = yaml.safe_load(f)
+
+    print("===== CONFIG (yaml) =====")
+    try:
+        print(yaml.safe_dump(config, sort_keys=True))
+    except Exception:
+        print(config)
+    print("=========================")
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
