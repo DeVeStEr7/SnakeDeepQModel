@@ -5,7 +5,7 @@ import heapq
 from collections import deque
 
 pygame.init()
-FPS = 60
+FPS = 30
 clock = pygame.time.Clock()
 
 TILE_SIZE = 20
@@ -327,8 +327,8 @@ def longestSafeMove(currentDirection):
         return bestDir
     return currentDirection
 
-# main AI decision to determine move
-def getAIMove(currentDirection):
+# smart AI decision to determine move
+def getSmartAIMove(currentDirection):
     snake = getSnakeGrid()
     head = snake[0]
     floodCache.clear()
@@ -348,6 +348,21 @@ def getAIMove(currentDirection):
     # maximize free space if previous two are invalid
     return longestSafeMove(currentDirection)
 
+# dumb AI decision to determine move
+def getDumbAIMove(currentDirection):
+    headx, heady = rectData[0], rectData[1]
+    foodx, foody = appleLoc
+    if foodx > headx and currentDirection != 3:
+        return 4
+    if foodx < headx and currentDirection != 4:
+        return 3
+    if foody > heady and currentDirection != 1:
+        return 2
+    if foody < heady and currentDirection != 2:
+        return 1
+    return currentDirection
+
+smart = False
 appleAvailable = displayApple()
 print(f"Apple Score: {score}", end="\r")
 running = True
@@ -360,7 +375,10 @@ while running:
             running = False
 
     if not gameOver:
-        direction = getAIMove(direction)
+        if smart:
+            direction = getSmartAIMove(direction)
+        else:
+            direction = getDumbAIMove(direction)
         move(direction)
         appleAvailable, gameOver, grow = catchCollision(appleAvailable, gameOver)
 
